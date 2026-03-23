@@ -47,9 +47,10 @@ def main():
     print("==============================")
 
     ik_cfg = DifferentialIKControllerCfg(
-        command_type="position",
+        command_type="pose",        # fixed: was "position", needs orientation too
         use_relative_mode=False,
-        ik_method="pinv",
+        ik_method="dls",
+        ik_params={"lambda_val":0.1}
     )
     ik_controller = DifferentialIKController(
         ik_cfg, num_envs=1, device=env.device)
@@ -61,7 +62,6 @@ def main():
 
     print("Sim running with IK")
 
-
     while simulation_app.is_running():
         pose = listener.get_pose()
 
@@ -69,23 +69,32 @@ def main():
             x, y, z, qx, qy, qz, qw = pose
 
             ee_pos_target = torch.tensor([[x, y, z]], device=env.device)
-            ee_quat_target = torch.tensor([[qw, qx, qy, qz]], device=env.device)
-           # ik_controller.set_command(
-           #     torch.cat([ee_pos_target, ee_quat_target], dim=-1))
-            ik_controller.set_command(ee_pos_target)
+            ee_quat_target = torch.tensor([[qw, qx, qy, qz]], device=env.device)  # IsaacLab expects (qw, qx, qy, qz)
+
+            ik_controller.set_command(
+                torch.cat([ee_pos_target, ee_quat_target], dim=-1))  # fixed: pass full pose
+
             joint_pos = env.robot.data.joint_pos[:, joint_ids]
-            ee_pos_curr = env.robot.data.body_pos_w[:, ee_idx, :]
-            ee_quat_curr = env.robot.data.body_quat_w[:, ee_idx, :]
-            jacobian = env.robot.root_physx_view.get_jacobians()[:, ee_idx - 1, :3, :6]
+            root_pos = env.robot.data.root_pos_w[:, :]
+            root_quat = env.robot.data.root_quat_w[:, :]
+            
+            ee_pos_curr = env.robot.data.body_pos_w[:, ee_idx, :] - root_pos
+            ee_quat_curr = env.robot.data.body_quat_w[:, ee_idx, :] 
+            jacobian = env.robot.root_physx_view.get_jacobians()[:, ee_idx - 1, :6, :6]
+            #delta = ik_controller.compute(
+            #    ee_pos_curr, ee_quat_curr, jacobian, joint_pos)
+            #delta = torch.clamp(delta,-0.1,0.1) #limit step size per iteration 
 
 
+            #actions = torch.clamp(joint_pos + delta, -3.14, 3.14)  # ← clamp to joint limits
+        
             actions = ik_controller.compute(
                 ee_pos_curr, ee_quat_curr, jacobian, joint_pos)
-
+            actions = torch.clamp(actions, -3.14, 3.14)
             step_count += 1
 
-        # DEBUG — only print on first step
-            if step_count == 1: 
+            # DEBUG — only print on first step
+            if step_count == 1:
                 jac = env.robot.root_physx_view.get_jacobians()
                 print(f"Jacobian full shape: {jac.shape}")
                 print(f"ee_idx: {ee_idx}")

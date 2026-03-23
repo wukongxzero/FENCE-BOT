@@ -20,8 +20,8 @@ ASEM_CFG = ArticulationCfg(
     actuators={
         "all_joints": ImplicitActuatorCfg(
             joint_names_expr=["j1", "j2", "j3", "j4", "j5", "j6"],
-            stiffness=100.0,
-            damping=10.0,
+            stiffness=800.0,
+            damping=40.0,
         )
     }
 )
