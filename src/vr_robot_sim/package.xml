@@ -3,14 +3,15 @@
 <package format="3">
   <name>vr_robot_sim</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>VR teleoperation ROS2 middleware for FENCE-BOT</description>
   <maintainer email="pavankushal15729@gmail.com">wukong</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
